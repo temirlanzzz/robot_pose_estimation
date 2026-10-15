@@ -1,218 +1,171 @@
-import React, { useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { useGLTF, Text, Html } from '@react-three/drei'
-import * as THREE from 'three'
-import { useRobotStore } from '../store/robotStore'
-
-interface RobotModelProps {
-  showLabels?: boolean
-  showEndEffector?: boolean
-}
-
-export function RobotModel({ showLabels = true, showEndEffector = true }: RobotModelProps) {
-  const groupRef = useRef<THREE.Group>(null)
-  const baseRef = useRef<THREE.Group>(null)
-  const shoulderRef = useRef<THREE.Group>(null)
-  const elbowRef = useRef<THREE.Group>(null)
-  const wrist1Ref = useRef<THREE.Group>(null)
-  const wrist2Ref = useRef<THREE.Group>(null)
-  const wrist3Ref = useRef<THREE.Group>(null)
-  const endEffectorRef = useRef<THREE.Group>(null)
-
-  const { joints, isLiveSimulation, confidence, poseEstimationError } = useRobotStore()
-
-  // Live simulation animation
-  useFrame((state) => {
-    if (isLiveSimulation) {
-      const time = state.clock.elapsedTime
-      joints.forEach((joint, index) => {
-        const amplitude = (joint.max - joint.min) * 0.3
-        const frequency = 0.5 + index * 0.2
-        const newAngle = joint.min + (joint.max - joint.min) / 2 + 
-                        amplitude * Math.sin(time * frequency)
-        useRobotStore.getState().updateJoint(joint.name, newAngle)
-      })
-    }
-  })
-
-  // Update joint rotations based on store
-  useEffect(() => {
-    if (baseRef.current) {
-      baseRef.current.rotation.y = THREE.MathUtils.degToRad(joints[0]?.angle || 0)
-    }
-    if (shoulderRef.current) {
-      shoulderRef.current.rotation.z = THREE.MathUtils.degToRad(joints[1]?.angle || 0)
-    }
-    if (elbowRef.current) {
-      elbowRef.current.rotation.z = THREE.MathUtils.degToRad(joints[2]?.angle || 0)
-    }
-    if (wrist1Ref.current) {
-      wrist1Ref.current.rotation.y = THREE.MathUtils.degToRad(joints[3]?.angle || 0)
-    }
-    if (wrist2Ref.current) {
-      wrist2Ref.current.rotation.z = THREE.MathUtils.degToRad(joints[4]?.angle || 0)
-    }
-    if (wrist3Ref.current) {
-      wrist3Ref.current.rotation.y = THREE.MathUtils.degToRad(joints[5]?.angle || 0)
-    }
-  }, [joints])
-
-  const getConfidenceColor = (conf: number) => {
-    if (conf >= 0.8) return '#4ade80' // green
-    if (conf >= 0.6) return '#fbbf24' // yellow
-    return '#ef4444' // red
-  }
-
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Line } from "@react-three/drei";
+import { Quaternion, Vector3 } from "three";
+import { Component, ReactNode } from "react";
+import { forward, Joints, Vec3 } from "../kinematics";
+const world = ([x, y, z]: Vec3): Vec3 => [x, z, -y];
+function Link({ a, b, index }: { a: Vec3; b: Vec3; index: number }) {
+  const start = new Vector3(...a),
+    end = new Vector3(...b),
+    delta = end.clone().sub(start);
+  const q = new Quaternion().setFromUnitVectors(
+    new Vector3(0, 1, 0),
+    delta.clone().normalize(),
+  );
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
-      {/* Base */}
-      <group ref={baseRef} position={[0, 0, 0]}>
-        <mesh position={[0, 0.1, 0]}>
-          <cylinderGeometry args={[0.3, 0.3, 0.2, 8]} />
-          <meshStandardMaterial color="#374151" />
-        </mesh>
-        
-        {/* Shoulder */}
-        <group ref={shoulderRef} position={[0, 0.3, 0]}>
-          <mesh position={[0, 0.4, 0]}>
-            <boxGeometry args={[0.2, 0.8, 0.2]} />
-            <meshStandardMaterial color="#6b7280" />
-          </mesh>
-          
-          {/* Upper arm */}
-          <mesh position={[0, 0.8, 0]}>
-            <boxGeometry args={[0.15, 1.2, 0.15]} />
-            <meshStandardMaterial color="#9ca3af" />
-          </mesh>
-          
-          {/* Elbow */}
-          <group ref={elbowRef} position={[0, 1.4, 0]}>
-            <mesh position={[0, 0.1, 0]}>
-              <sphereGeometry args={[0.12, 8, 8]} />
-              <meshStandardMaterial color="#6b7280" />
-            </mesh>
-            
-            {/* Lower arm */}
-            <mesh position={[0, 0.6, 0]}>
-              <boxGeometry args={[0.12, 1.2, 0.12]} />
-              <meshStandardMaterial color="#9ca3af" />
-            </mesh>
-            
-            {/* Wrist 1 */}
-            <group ref={wrist1Ref} position={[0, 1.2, 0]}>
-              <mesh position={[0, 0.1, 0]}>
-                <sphereGeometry args={[0.1, 8, 8]} />
-                <meshStandardMaterial color="#6b7280" />
-              </mesh>
-              
-              {/* Wrist 2 */}
-              <group ref={wrist2Ref} position={[0, 0.2, 0]}>
-                <mesh position={[0, 0.1, 0]}>
-                  <sphereGeometry args={[0.08, 8, 8]} />
-                  <meshStandardMaterial color="#6b7280" />
-                </mesh>
-                
-                {/* Wrist 3 */}
-                <group ref={wrist3Ref} position={[0, 0.16, 0]}>
-                  <mesh position={[0, 0.1, 0]}>
-                    <sphereGeometry args={[0.06, 8, 8]} />
-                    <meshStandardMaterial color="#6b7280" />
-                  </mesh>
-                  
-                  {/* End effector */}
-                  {showEndEffector && (
-                    <group ref={endEffectorRef} position={[0, 0.2, 0]}>
-                      <mesh position={[0, 0.05, 0]}>
-                        <cylinderGeometry args={[0.02, 0.02, 0.1, 8]} />
-                        <meshStandardMaterial color="#ef4444" />
-                      </mesh>
-                      <mesh position={[0, 0.1, 0]}>
-                        <coneGeometry args={[0.03, 0.1, 8]} />
-                        <meshStandardMaterial color="#dc2626" />
-                      </mesh>
-                    </group>
-                  )}
-                </group>
-              </group>
-            </group>
-          </group>
-        </group>
-      </group>
-
-      {/* Joint labels */}
-      {showLabels && (
-        <>
-          <Html position={[0, 0.2, 0.4]} center>
-            <div style={{
-              background: 'rgba(0,0,0,0.8)',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap'
-            }}>
-              Base: {joints[0]?.angle.toFixed(1)}°
-            </div>
-          </Html>
-          
-          <Html position={[0.3, 0.8, 0]} center>
-            <div style={{
-              background: 'rgba(0,0,0,0.8)',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap'
-            }}>
-              Shoulder: {joints[1]?.angle.toFixed(1)}°
-            </div>
-          </Html>
-          
-          <Html position={[0.2, 1.4, 0]} center>
-            <div style={{
-              background: 'rgba(0,0,0,0.8)',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              whiteSpace: 'nowrap'
-            }}>
-              Elbow: {joints[2]?.angle.toFixed(1)}°
-            </div>
-          </Html>
-        </>
-      )}
-
-      {/* Confidence indicator */}
-      <Html position={[0, 2.5, 0]} center>
-        <div style={{
-          background: 'rgba(0,0,0,0.9)',
-          color: getConfidenceColor(confidence),
-          padding: '8px 12px',
-          borderRadius: '6px',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          border: `2px solid ${getConfidenceColor(confidence)}`
-        }}>
-          Confidence: {(confidence * 100).toFixed(1)}%
-        </div>
-      </Html>
-
-      {/* Error indicator */}
-      {poseEstimationError && (
-        <Html position={[0, 3, 0]} center>
-          <div style={{
-            background: 'rgba(239, 68, 68, 0.9)',
-            color: 'white',
-            padding: '8px 12px',
-            borderRadius: '6px',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            ⚠️ {poseEstimationError}
-          </div>
-        </Html>
-      )}
+    <group>
+      <mesh
+        position={start.clone().add(end).multiplyScalar(0.5)}
+        quaternion={q}
+        castShadow
+      >
+        <boxGeometry
+          args={[index === 0 ? 0.17 : 0.105, delta.length(), 0.105]}
+        />
+        <meshStandardMaterial
+          color={index === 0 ? "#303b42" : "#e6e8df"}
+          metalness={0.6}
+          roughness={0.28}
+        />
+      </mesh>
+      <mesh position={a} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.095, 0.095, 0.16, 32]} />
+        <meshStandardMaterial
+          color="#edb854"
+          metalness={0.65}
+          roughness={0.3}
+        />
+      </mesh>
     </group>
-  )
-} 
+  );
+}
+class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div className="fallback">
+        3D needs WebGL. All kinematics controls and numerical results remain
+        available.
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
+}
+export default function RobotModel({
+  joints,
+  target,
+  workspace,
+  view,
+}: {
+  joints: Joints;
+  target: Vec3;
+  workspace: boolean;
+  view: number;
+}) {
+  const points = forward(joints).map(world),
+    tip = points[3];
+  return (
+    <Boundary>
+      <Canvas
+        key={view}
+        shadows
+        camera={{ position: [2.6, 2.1, 2.7], fov: 40 }}
+        dpr={[1, 1.8]}
+        aria-label="Interactive 3D robot arm; drag to orbit and scroll to zoom"
+        fallback={
+          <div className="fallback">
+            WebGL unavailable. Use the numerical controls below.
+          </div>
+        }
+      >
+        <color attach="background" args={["#171e23"]} />
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[3, 5, 2]} intensity={2} castShadow />
+        <directionalLight
+          position={[-3, 2, -3]}
+          intensity={1}
+          color="#8dc0e0"
+        />
+        <gridHelper args={[5, 50, "#34454c", "#273238"]} />
+        <mesh position={[0, -0.032, 0]} receiveShadow>
+          <boxGeometry args={[0.5, 0.06, 0.5]} />
+          <meshStandardMaterial
+            color="#33434b"
+            metalness={0.7}
+            roughness={0.4}
+          />
+        </mesh>
+        {points.slice(0, -1).map((point, i) => (
+          <Link key={i} a={point} b={points[i + 1]} index={i} />
+        ))}
+        <mesh position={tip}>
+          <sphereGeometry args={[0.055, 24, 24]} />
+          <meshStandardMaterial
+            color="#90e4c1"
+            emissive="#397b63"
+            emissiveIntensity={0.6}
+          />
+        </mesh>
+        <Line
+          points={[tip, [tip[0], 0, tip[2]]]}
+          color="#728b8d"
+          dashed
+          dashSize={0.035}
+          gapSize={0.035}
+        />
+        <mesh position={world(target)}>
+          <sphereGeometry args={[0.075, 16, 16]} />
+          <meshBasicMaterial
+            color="#f0ba5c"
+            wireframe
+            transparent
+            opacity={0.65}
+          />
+        </mesh>
+        {workspace && (
+          <mesh position={[0, 0.28, 0]}>
+            <sphereGeometry args={[1.3, 32, 24]} />
+            <meshBasicMaterial
+              color="#8fcaaf"
+              transparent
+              opacity={0.035}
+              wireframe
+            />
+          </mesh>
+        )}
+        <Line
+          points={[
+            [0, 0.005, 0],
+            [0.5, 0.005, 0],
+          ]}
+          color="#d47674"
+        />
+        <Line
+          points={[
+            [0, 0.005, 0],
+            [0, 0.005, -0.5],
+          ]}
+          color="#86ae92"
+        />
+        <Line
+          points={[
+            [0, 0, 0],
+            [0, 0.5, 0],
+          ]}
+          color="#7dabc8"
+        />
+        <OrbitControls
+          makeDefault
+          target={[0, 0.55, 0]}
+          minDistance={1.4}
+          maxDistance={6}
+          maxPolarAngle={Math.PI * 0.49}
+        />
+      </Canvas>
+    </Boundary>
+  );
+}
