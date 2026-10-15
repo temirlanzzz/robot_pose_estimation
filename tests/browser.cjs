@@ -55,6 +55,13 @@ let browser;
   }
   await page.getByRole("button", { name: "Joint angles", exact: true }).click();
   await page.getByRole("button", { name: "Ready", exact: true }).click();
+  const viewportBox = await page.locator(".viewport").boundingBox();
+  const canvasBox = await page.locator(".viewport canvas").boundingBox();
+  assert.ok(viewportBox && canvasBox);
+  assert.ok(
+    Math.abs(viewportBox.height - canvasBox.height) < 2,
+    "Canvas fills the viewport panel",
+  );
   await page.screenshot({ path: "axis-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(

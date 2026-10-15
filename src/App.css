@@ -130,7 +130,8 @@ h1 span {
   overflow: hidden;
 }
 .viewport {
-  height: 510px;
+  height: 100%;
+  min-height: 510px;
   position: relative;
   min-width: 0;
   background: #171e23;
@@ -584,7 +585,7 @@ footer i {
 }
 @media (min-width: 1450px) {
   .viewport {
-    height: 550px;
+    min-height: 550px;
   }
   .controls {
     padding: 30px;
@@ -675,6 +676,7 @@ footer i {
   }
   .viewport {
     height: 360px;
+    min-height: 360px;
   }
   .controls {
     border-left: 0;

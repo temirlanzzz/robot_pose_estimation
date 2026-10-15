@@ -43,6 +43,8 @@ The visual language is a graphite engineering instrument with amber controls and
 
 UI fonts: DM Sans and IBM Plex Mono with local system fallbacks. All model calculations and exports run locally; Google Fonts may be fetched for typography. No application state is uploaded.
 
-## Verification limits
+## Verification
 
-Numerical, type, lint, and production build checks are runnable independently of WebGL. This implementation environment blocks Chromium startup through its managed Unix-socket policy, so browser screenshots and WebGL interaction could not be executed here. The Playwright script is retained for a browser-capable environment; an unrun browser check is not a passed check.
+Type checks, lint, seven numerical tests, production build, and desktop/mobile Playwright checks passed in [GitHub Actions run 38814229703](https://github.com/temirlanzzz/robot_pose_estimation/actions/runs/38814229703) for commit `6962bc6`. Browser checks exercised presets, reachable/unreachable IK, current-position targeting, URDF/JSON downloads, and mobile overflow. Desktop and mobile screenshot artifacts were produced and visually reviewed; the Three.js scene rendered correctly using software WebGL.
+
+Local Chromium startup was blocked by the implementation environment's managed Unix-socket policy, so browser verification was performed on GitHub Actions rather than claimed locally. The production build reports a size warning for the Three.js vendor chunk.
