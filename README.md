@@ -48,3 +48,9 @@ UI fonts: DM Sans and IBM Plex Mono with local system fallbacks. All model calcu
 Type checks, lint, seven numerical tests, production build, and desktop/mobile Playwright checks passed in [GitHub Actions run 38814229703](https://github.com/temirlanzzz/robot_pose_estimation/actions/runs/38814229703) for commit `6962bc6`. Browser checks exercised presets, reachable/unreachable IK, current-position targeting, URDF/JSON downloads, and mobile overflow. Desktop and mobile screenshot artifacts were produced and visually reviewed; the Three.js scene rendered correctly using software WebGL.
 
 Local Chromium startup was blocked by the implementation environment's managed Unix-socket policy, so browser verification was performed on GitHub Actions rather than claimed locally. The production build reports a size warning for the Three.js vendor chunk.
+
+## Dependency security
+
+On 2026-10-15, a full `npm audit` (including development dependencies) reported **zero vulnerabilities** after updating to Vite 7.3.7, the compatible React plugin, and patched transitive packages. The unused `gh-pages` CLI was removed; publication uses the existing main-only GitHub Actions workflow. CI rejects high/critical npm advisories.
+
+The prior findings primarily affected development/build tools (Vite, PostCSS, YAML and glob parsers). The deployed artifact is static and runs no Vite server. The app does not accept uploaded source, CSS, ZIP archives, or glob expressions, but those dependencies were remediated rather than relying on limited runtime exposure. Audit results are a point-in-time dependency check, not a complete security assessment.
